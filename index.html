@@ -166,7 +166,7 @@ async function boardHtml(highlight) {
     }).join("");
     return `<h3>🏆 Topliste</h3><table><tr><th>#</th><th>Bruger</th><th>Forsøg</th><th>Tid</th><th>Dato/tid</th></tr>${rows}</table>` +
       (useFirebase ? "" : `<p class="note">Lokal topliste – indsæt Firebase-config for fælles scoreboard.</p>`);
-  } catch (e) { console.error(e); return `<p class="note">Kunne ikke hente toplisten.</p>`; }
+  } catch (e) { console.error(e); return `<p class="note">Kunne ikke hente toplisten: ${esc(e.code || "")} ${esc(e.message || e)}</p>`; }
 }
 
 async function loadFinal() {
@@ -186,8 +186,9 @@ async function finish() {
   loadFinal().then(c => $("finalBox").innerHTML = `<div class="final">📍 Koordinat til final:<br><b>${esc(c)}</b></div>`);
   $("boardEnd").innerHTML = "Gemmer score…";
   setTimeout(() => $("endScreen").classList.remove("hidden"), 700);
-  try { await saveScore(rec); } catch (e) { console.error(e); }
-  $("boardEnd").innerHTML = await boardHtml(rec);
+  let saveErr = "";
+  try { await saveScore(rec); } catch (e) { console.error(e); saveErr = `<p class="note">Kunne ikke gemme scoren: ${esc(e.code || "")} ${esc(e.message || e)}</p>`; }
+  $("boardEnd").innerHTML = saveErr + await boardHtml(rec);
 }
 
 function start() {
