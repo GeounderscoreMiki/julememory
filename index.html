@@ -159,8 +159,8 @@ async function saveScore(rec) {
 }
 async function loadScores() {
   if (useFirebase) {
-    const snap = await getDocs(query(scores, orderBy("attempts"), orderBy("ms"), limit(50)));
-    return snap.docs.map(d => d.data());
+    const snap = await getDocs(query(scores, orderBy("createdAt", "desc"), limit(500)));
+    return snap.docs.map(d => d.data()).sort((a,b) => a.attempts - b.attempts || a.ms - b.ms).slice(0,50);
   }
   const list = JSON.parse(localStorage.getItem("julememory") || "[]");
   return list.sort((a,b) => a.attempts - b.attempts || a.ms - b.ms).slice(0,50);
