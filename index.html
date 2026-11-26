@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>🎄 Geocaching Jule-Memory</title>
+<style>
+  :root { --red:#b71c1c; --gold:#ffc107; }
+  * { box-sizing:border-box; }
+  body { margin:0; min-height:100vh; font-family:system-ui,sans-serif; color:#fff;
+    background:radial-gradient(circle at top,#14532d,#052e16 70%); }
+  header { text-align:center; padding:12px 8px 4px; }
+  h1 { margin:0; font-size:clamp(1.3rem,3.5vw,2.2rem); text-shadow:0 2px 6px #000; }
+  .stats { display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin:8px; }
+  .stat { background:#0008; border:2px solid var(--gold); border-radius:12px; padding:6px 14px; font-weight:bold; }
+  #grid { display:grid; grid-template-columns:repeat(7,1fr); gap:clamp(4px,1vw,10px);
+    width:min(98vw,calc((100vh - 170px) * 7 / 4)); margin:8px auto 20px; }
+  .tile { aspect-ratio:1; perspective:600px; cursor:pointer; border:0; background:none; padding:0; }
+  .inner { position:relative; width:100%; height:100%; transition:transform .5s; transform-style:preserve-3d; }
+  .tile.flipped .inner, .tile.matched .inner { transform:rotateY(180deg); }
+  .face { position:absolute; inset:0; backface-visibility:hidden; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; overflow:hidden; text-align:center; }
+  .back { background:repeating-linear-gradient(45deg,var(--red) 0 10px,#8e0000 10px 20px);
+    border:3px solid var(--gold); font-size:clamp(1rem,4vw,2.2rem); }
+  .front { transform:rotateY(180deg); background:#fff; color:#111; border:3px solid var(--gold); }
+  .front img { width:100%; height:100%; object-fit:cover; }
+  .front.name { background:linear-gradient(#fffde7,#c8e6c9); font-weight:bold; padding:3px;
+    font-size:clamp(.6rem,1.8vw,1.1rem); word-break:break-word; }
+  .tile.matched .front { border-color:#4caf50; box-shadow:0 0 12px #4caf50; }
+  .overlay { position:fixed; inset:0; background:#000c; display:flex; align-items:center; justify-content:center; z-index:10; padding:10px; }
+  .overlay.hidden { display:none; }
+  .box { background:#0b2e17; border:3px solid var(--gold); border-radius:16px; padding:22px; max-width:560px; width:100%; text-align:center; max-height:95vh; overflow:auto; }
+  input { font-size:1.1rem; padding:10px; border-radius:8px; border:0; width:80%; }
+  button.btn { font-size:1.1rem; margin:10px 4px 0; padding:10px 20px; border:0; border-radius:8px; background:var(--gold); font-weight:bold; cursor:pointer; }
+  table { width:100%; border-collapse:collapse; margin-top:10px; font-size:.85rem; }
+  th,td { padding:4px; border-bottom:1px solid #fff3; }
+  .final { background:#0008; border:2px dashed var(--gold); border-radius:12px; padding:12px; margin:10px 0; font-size:1.2rem; }
+  .note { font-size:.75rem; opacity:.7; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🎄 Geocaching Jule-Memory 📍</h1>
+  <div class="stats">
+    <div class="stat">👤 <span id="player">-</span></div>
+    <div class="stat">🧭 Forsøg: <span id="attempts">0</span></div>
+    <div class="stat">⏱️ Tid: <span id="time">00:00</span></div>
+  </div>
+</header>
+<div id="grid"></div>
+
+<div class="overlay" id="startScreen">
+  <div class="box">
+    <h2>🎅 Find skatten! 🎁</h2>
+    <p>Match hvert profilbillede med det rigtige navn.<br>Ubegrænset tid – færre forsøg giver bedre placering.</p>
+    <input id="nameInput" placeholder="Dit brugernavn" maxlength="24">
+    <br><button class="btn" id="startBtn">Start spillet 🎄</button>
+    <div id="boardStart"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endScreen">
+  <div class="box">
+    <h2>🎉 Cachen er fundet! 🎉</h2>
+    <p id="result"></p>
+    <div id="finalBox"></div>
+    <div id="boardEnd"></div>
+    <button class="btn" id="againBtn">Spil igen</button>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, getDoc, doc, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+// ====== INDSÆT DIN FIREBASE-CONFIG (Project settings > Your apps > Web) ======
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyBVQZ2A5-BhkTvgtZhOimx03EUlq3nZATg",
+  authDomain: "julememory.firebaseapp.com",
+  projectId: "julememory",
+  appId: "1:93689511734:web:2e5f9cee385498fef0fd97"
+};
+// ============================================================================
+
+// ====== RET HER: skriv de 14 navne. Billedet i mappen "billeder" skal hedde præcis det samme + .jpg ======
+// Eksempel: "Anna" -> billeder/Anna.jpg
+const PROFILES = [
+  "29kenneth","8asse","Ajnets team","Bentstor","Geo_Miki","GitteT","Kreamormor",
+  "Løfberg","PiaogFutter","RoseFrederiksen.dk","Soafmormor","Stige2","TeamHasse","geoArvesen"
+].map(n => ({ name:n, img:encodeURI("billeder/" + n + ".jpg") }));
+// ========================================================================
+
+// Reserve hvis Firebase ikke er sat op. Rettes i Firebase: samling "config", dokument "final", felt "coordinates".
+const FALLBACK_FINAL = "N 00° 00.000 E 000° 00.000";
+
+const useFirebase = !!FIREBASE_CONFIG.projectId;
+const db = useFirebase ? getFirestore(initializeApp(FIREBASE_CONFIG)) : null;
+const scores = useFirebase ? collection(db, "scores") : null;
+
+const BACKS = ["🎄","📍","🎁","🧭","⭐","🔔","❄️","🗺️"];
+const $ = id => document.getElementById(id);
+let first = null, lock = false, attempts = 0, matched = 0, startTime = 0, timer = null, player = "";
+
+window.fallbackAvatar = function (name) {
+  const hue = [...name].reduce((a,c)=>a+c.charCodeAt(0)*7,0) % 360;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="hsl(${hue},55%,45%)"/><text x="100" y="125" font-size="90" text-anchor="middle" fill="#fff" font-family="sans-serif">${name.trim().slice(0,2).toUpperCase()}</text></svg>`;
+  return "data:image/svg+xml;utf8," + encodeURIComponent(svg);
+};
+const esc = s => String(s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt = ms => { const s = Math.floor(ms/1000); return String(Math.floor(s/60)).padStart(2,"0")+":"+String(s%60).padStart(2,"0"); };
+const shuffle = a => { for (let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]];} return a; };
+
+function build() {
+  const tiles = [];
+  PROFILES.forEach((p,i) => { tiles.push({ id:i, type:"img", p }); tiles.push({ id:i, type:"name", p }); });
+  shuffle(tiles);
+  const grid = $("grid"); grid.innerHTML = "";
+  tiles.forEach((t,idx) => {
+    const el = document.createElement("button");
+    el.className = "tile";
+    const front = t.type === "img"
+      ? `<div class="face front"><img src="${esc(t.p.img)}" alt="${esc(t.p.name)}" onerror="this.onerror=null;this.src=fallbackAvatar(this.alt)"></div>`
+      : `<div class="face front name">${esc(t.p.name)}</div>`;
+    el.innerHTML = `<div class="inner"><div class="face back">${BACKS[idx % BACKS.length]}</div>${front}</div>`;
+    el.onclick = () => flip(el, t);
+    grid.appendChild(el);
+  });
+}
+
+function flip(el, t) {
+  if (lock || el.classList.contains("flipped") || el.classList.contains("matched")) return;
+  el.classList.add("flipped");
+  if (!first) { first = { el, t }; return; }
+  attempts++; $("attempts").textContent = attempts;
+  const a = first; first = null;
+  if (a.t.id === t.id && a.t.type !== t.type) {
+    [a.el, el].forEach(x => { x.classList.remove("flipped"); x.classList.add("matched"); });
+    if (++matched === PROFILES.length) finish();
+  } else {
+    lock = true;
+    setTimeout(() => { a.el.classList.remove("flipped"); el.classList.remove("flipped"); lock = false; }, 1000);
+  }
+}
+
+async function saveScore(rec) {
+  if (useFirebase) { await addDoc(scores, { name:rec.name, attempts:rec.attempts, ms:rec.ms, date:rec.date, createdAt:serverTimestamp() }); return; }
+  const list = JSON.parse(localStorage.getItem("julememory") || "[]"); list.push(rec);
+  localStorage.setItem("julememory", JSON.stringify(list));
+}
+async function loadScores() {
+  if (useFirebase) {
+    const snap = await getDocs(query(scores, orderBy("attempts"), orderBy("ms"), limit(10)));
+    return snap.docs.map(d => d.data());
+  }
+  const list = JSON.parse(localStorage.getItem("julememory") || "[]");
+  return list.sort((a,b) => a.attempts - b.attempts || a.ms - b.ms).slice(0,10);
+}
+async function boardHtml(highlight) {
+  try {
+    const list = await loadScores();
+    if (!list.length) return "";
+    const rows = list.map((r,i) => {
+      const me = highlight && r.name === highlight.name && r.ms === highlight.ms && r.attempts === highlight.attempts;
+      return `<tr${me?' style="color:var(--gold)"':''}><td>${i+1}</td><td>${esc(r.name)}</td><td>${r.attempts}</td><td>${fmt(r.ms)}</td><td>${esc(r.date)}</td></tr>`;
+    }).join("");
+    return `<h3>🏆 Topliste</h3><table><tr><th>#</th><th>Bruger</th><th>Forsøg</th><th>Tid</th><th>Dato/tid</th></tr>${rows}</table>` +
+      (useFirebase ? "" : `<p class="note">Lokal topliste – indsæt Firebase-config for fælles scoreboard.</p>`);
+  } catch (e) { console.error(e); return `<p class="note">Kunne ikke hente toplisten.</p>`; }
+}
+
+async function loadFinal() {
+  if (!useFirebase) return FALLBACK_FINAL;
+  try {
+    const d = await getDoc(doc(db, "config", "final"));
+    return d.exists() && d.data().coordinates ? d.data().coordinates : FALLBACK_FINAL;
+  } catch (e) { console.error(e); return FALLBACK_FINAL; }
+}
+
+async function finish() {
+  clearInterval(timer);
+  const ms = Date.now() - startTime;
+  const rec = { name:player, attempts, ms, date:new Date().toLocaleString("da-DK") };
+  $("result").innerHTML = `<b>${esc(player)}</b> brugte <b>${attempts}</b> forsøg og <b>${fmt(ms)}</b><br>${esc(rec.date)}`;
+  $("finalBox").innerHTML = "";
+  loadFinal().then(c => $("finalBox").innerHTML = `<div class="final">📍 Koordinat til final:<br><b>${esc(c)}</b></div>`);
+  $("boardEnd").innerHTML = "Gemmer score…";
+  setTimeout(() => $("endScreen").classList.remove("hidden"), 700);
+  try { await saveScore(rec); } catch (e) { console.error(e); }
+  $("boardEnd").innerHTML = await boardHtml(rec);
+}
+
+function start() {
+  player = $("nameInput").value.trim();
+  if (!player) { $("nameInput").focus(); return; }
+  first = null; lock = false; attempts = 0; matched = 0;
+  $("player").textContent = player; $("attempts").textContent = 0; $("time").textContent = "00:00";
+  build();
+  $("startScreen").classList.add("hidden"); $("endScreen").classList.add("hidden");
+  startTime = Date.now();
+  clearInterval(timer);
+  timer = setInterval(() => $("time").textContent = fmt(Date.now() - startTime), 500);
+}
+
+async function showStart() {
+  $("endScreen").classList.add("hidden"); $("startScreen").classList.remove("hidden");
+  $("boardStart").innerHTML = await boardHtml();
+}
+
+$("startBtn").onclick = start;
+$("nameInput").onkeydown = e => { if (e.key === "Enter") start(); };
+$("againBtn").onclick = showStart;
+build();
+showStart();
+</script>
+</body>
+</html>
