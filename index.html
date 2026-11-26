@@ -35,6 +35,7 @@
   table { width:100%; border-collapse:collapse; margin-top:10px; font-size:.85rem; }
   th,td { padding:4px; border-bottom:1px solid #fff3; }
   .final { background:#0008; border:2px dashed var(--gold); border-radius:12px; padding:12px; margin:10px 0; font-size:1.2rem; }
+  a { color:var(--gold); }
   .note { font-size:.75rem; opacity:.7; }
 </style>
 </head>
@@ -55,7 +56,15 @@
     <p>Match hvert profilbillede med det rigtige navn.<br>Ubegrænset tid – færre forsøg giver bedre placering.</p>
     <input id="nameInput" placeholder="Dit brugernavn" maxlength="24">
     <br><button class="btn" id="startBtn">Start spillet 🎄</button>
-    <div id="boardStart"></div>
+    <p><a href="#scoreboard" id="boardLink">🏆 Se scoreboard</a></p>
+  </div>
+</div>
+
+<div class="overlay hidden" id="boardScreen">
+  <div class="box">
+    <h2>🏆 Scoreboard</h2>
+    <div id="boardFull">Henter…</div>
+    <button class="btn" id="boardBack">Tilbage</button>
   </div>
 </div>
 
@@ -150,11 +159,11 @@ async function saveScore(rec) {
 }
 async function loadScores() {
   if (useFirebase) {
-    const snap = await getDocs(query(scores, orderBy("attempts"), orderBy("ms"), limit(10)));
+    const snap = await getDocs(query(scores, orderBy("attempts"), orderBy("ms"), limit(50)));
     return snap.docs.map(d => d.data());
   }
   const list = JSON.parse(localStorage.getItem("julememory") || "[]");
-  return list.sort((a,b) => a.attempts - b.attempts || a.ms - b.ms).slice(0,10);
+  return list.sort((a,b) => a.attempts - b.attempts || a.ms - b.ms).slice(0,50);
 }
 async function boardHtml(highlight) {
   try {
@@ -205,14 +214,22 @@ function start() {
 
 async function showStart() {
   $("endScreen").classList.add("hidden"); $("startScreen").classList.remove("hidden");
-  $("boardStart").innerHTML = await boardHtml();
 }
 
 $("startBtn").onclick = start;
 $("nameInput").onkeydown = e => { if (e.key === "Enter") start(); };
 $("againBtn").onclick = showStart;
 build();
+
+async function route() {
+  const open = location.hash === "#scoreboard";
+  $("boardScreen").classList.toggle("hidden", !open);
+  if (open) { $("boardFull").innerHTML = "Henter…"; $("boardFull").innerHTML = (await boardHtml()) || "Ingen scores endnu."; }
+}
+$("boardBack").onclick = () => { location.hash = ""; };
+addEventListener("hashchange", route);
 showStart();
+route();
 </script>
 </body>
 </html>
