@@ -36,6 +36,18 @@
   th,td { padding:4px; border-bottom:1px solid #fff3; }
   .final { background:#0008; border:2px dashed var(--gold); border-radius:12px; padding:12px; margin:10px 0; font-size:1.2rem; }
   a { color:var(--gold); }
+  #startScreen { background:radial-gradient(circle at 50% 20%,#14532dee,#02150a 75%); overflow:hidden; }
+  #startScreen .box { position:relative; z-index:1; background:#0b2e17dd; box-shadow:0 0 30px #ffc10088, inset 0 0 20px #0008; }
+  .hero { font-size:2.6rem; letter-spacing:.3rem; animation:bob 2.5s ease-in-out infinite; }
+  .kicker { text-transform:uppercase; letter-spacing:.2rem; font-size:.8rem; color:var(--gold); margin-top:6px; }
+  .title { font-size:clamp(1.6rem,6vw,2.3rem); margin:6px 0 14px; text-shadow:0 0 12px #ffc107aa; }
+  .steps { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:10px; }
+  .steps div { background:#fff1; border:1px solid #ffc10088; border-radius:20px; padding:5px 12px; font-size:.85rem; }
+  #startBtn { animation:pulse 1.8s infinite; }
+  .snow { position:absolute; top:-10px; color:#fff; pointer-events:none; animation:fall linear infinite; opacity:.8; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(360deg); } }
+  @keyframes bob { 50% { transform:translateY(-6px); } }
+  @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 #ffc107aa; } 50% { box-shadow:0 0 0 12px #ffc10000; } }
   .note { font-size:.75rem; opacity:.7; }
 </style>
 </head>
@@ -49,14 +61,20 @@
   </div>
 </header>
 <div id="grid"></div>
-<p class="note" style="text-align:center">Version 5</p>
+<p class="note" style="text-align:center">Version 6</p>
 
 <div class="overlay" id="startScreen">
+  <div id="snowBox"></div>
   <div class="box">
-    <h2>🎅 Find skatten! 🎁</h2>
+    <div class="hero">📍🎄🧭</div>
+    <div class="kicker">Julens geocaching-mystery</div>
+    <h2 class="title">Find vej til finalen</h2>
+    <div class="steps">
+      <div>🎁 Vend brikkerne</div><div>🧩 Find par</div><div>📍 Få koordinatet</div>
+    </div>
     <p>For at få final skal du matche hvert profilbillede med dets rigtige profilnavn.<br>Du har ubegrænset tid – færre forsøg giver bedre placering på scoreboardet.</p>
-    <input id="nameInput" placeholder="Dit brugernavn" maxlength="24">
-    <br><button class="btn" id="startBtn">Start spillet 🎄</button>
+    <input id="nameInput" placeholder="Skriv dit brugernavn" maxlength="24">
+    <br><button class="btn" id="startBtn">Start missionen 🎅</button>
     <p><a href="#scoreboard" id="boardLink">🏆 Se scoreboard</a></p>
   </div>
 </div>
@@ -221,6 +239,13 @@ $("startBtn").onclick = start;
 $("nameInput").onkeydown = e => { if (e.key === "Enter") start(); };
 $("againBtn").onclick = showStart;
 build();
+
+for (let i = 0; i < 28; i++) {
+  const f = document.createElement("span");
+  f.className = "snow"; f.textContent = "❄";
+  f.style.cssText = `left:${Math.random()*100}%;font-size:${10+Math.random()*16}px;animation-duration:${6+Math.random()*8}s;animation-delay:-${Math.random()*10}s`;
+  $("snowBox").appendChild(f);
+}
 
 async function route() {
   const open = location.hash === "#scoreboard";
