@@ -49,6 +49,27 @@
   @keyframes bob { 50% { transform:translateY(-6px); } }
   @keyframes pulse { 0%,100% { box-shadow:0 0 0 0 #ffc107aa; } 50% { box-shadow:0 0 0 12px #ffc10000; } }
   .note { font-size:.75rem; opacity:.7; }
+  .tile { -webkit-tap-highlight-color:transparent; touch-action:manipulation; }
+  @media (max-width:700px) and (orientation:portrait) {
+    h1 { font-size:1.2rem; }
+    header { padding:8px 6px 0; }
+    .stats { gap:6px; margin:6px; }
+    .stat { padding:4px 9px; font-size:.85rem; }
+    #grid { grid-template-columns:repeat(4,1fr); gap:6px;
+      width:min(96vw,calc((100vh - 140px) * 4 / 7));
+      width:min(96vw,calc((100dvh - 140px) * 4 / 7)); margin:6px auto 12px; }
+    .front.name { font-size:clamp(.7rem,3.4vw,1rem); }
+    .back { font-size:1.6rem; }
+    .box { padding:16px; }
+    .hero { font-size:2rem; }
+    table { font-size:.72rem; }
+    th,td { padding:3px 2px; }
+  }
+  @media (max-height:480px) and (orientation:landscape) {
+    header { padding:4px; } h1 { font-size:1rem; } .stats { margin:2px; }
+    #grid { width:min(98vw,calc((100vh - 90px) * 7 / 4)); margin:4px auto; }
+    .overlay { align-items:flex-start; overflow:auto; }
+  }
 </style>
 </head>
 <body>
@@ -61,7 +82,7 @@
   </div>
 </header>
 <div id="grid"></div>
-<p class="note" style="text-align:center">Version 6</p>
+<p class="note" style="text-align:center">Version 7</p>
 
 <div class="overlay" id="startScreen">
   <div id="snowBox"></div>
