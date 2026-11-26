@@ -80,7 +80,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, serverTimestamp }
+import { getFirestore, collection, addDoc, query, orderBy, limit, getDocs, getDoc, doc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ====== INDSÆT DIN FIREBASE-CONFIG (Project settings > Your apps > Web) ======
@@ -100,7 +100,7 @@ const PROFILES = [
 ].map(n => ({ name:n, img:encodeURI("billeder/" + n + ".jpg") }));
 // ========================================================================
 
-// Vises kun hvis filen final.txt ikke kan læses. Koordinatet rettes i filen final.txt.
+// Vises kun hvis koordinatet ikke kan hentes. Rettes i Firebase: samling "config", dokument "final", felt "coordinates".
 const FALLBACK_FINAL = "N 00° 00.000 E 000° 00.000";
 
 const useFirebase = !!FIREBASE_CONFIG.projectId;
@@ -179,10 +179,10 @@ async function boardHtml(highlight) {
 }
 
 async function loadFinal() {
+  if (!useFirebase) return FALLBACK_FINAL;
   try {
-    const r = await fetch("final.txt?t=" + Date.now(), { cache:"no-store" });
-    const t = (await r.text()).trim();
-    return r.ok && t ? t : FALLBACK_FINAL;
+    const d = await getDoc(doc(db, "config", "final"));
+    return d.exists() && d.data().coordinates ? d.data().coordinates : FALLBACK_FINAL;
   } catch (e) { console.error(e); return FALLBACK_FINAL; }
 }
 
